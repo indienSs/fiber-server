@@ -4,18 +4,21 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v2"
 )
 
 const (
-	port = ":3000"
+	PORT = ":3000"
 )
 
 type Item struct {
 	Id int `json:"id"`
-	Title string `json:"title"`
-	Price float32 `json:"price"`
+	Title string `json:"title" validate:"required,min=5,max=20"`
+	Price float32 `json:"price" validate:"gte=0"`
 }
+
+var validate = validator.New()
 
 var items []Item = []Item{
 	{Id: 0, Title: "First item", Price: 10.2},
@@ -29,7 +32,6 @@ func removeIndex[T any](s []T, index int) []T {
     return append(s[:index], s[index+1:]...)
 }
 
-
 func getItems(c *fiber.Ctx) error {
 	fmt.Println(c.Method(), c.Path())
 	return c.JSON(items)
@@ -40,6 +42,10 @@ func createItem(c *fiber.Ctx) error {
 	
 	if err := c.BodyParser(&item); err != nil {
 		return c.Status(http.StatusBadRequest).SendString("Invalid JSON")
+	}
+
+	if err := validate.Struct(item); err != nil {
+		return c.Status(http.StatusBadRequest).SendString(err.Error())
 	}
 
 	item.Id = len(items)
@@ -95,7 +101,7 @@ func main() {
 	app.Get("/items/:id", getItem)
 	app.Delete("/items/:id", deleteItem)
 
-	err := app.Listen(port)
+	err := app.Listen(PORT)
 	if err != nil {
 		fmt.Println("server start error", err)
 	}
